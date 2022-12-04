@@ -1,16 +1,19 @@
 //https://www.youtube.com/watch?v=bl2k6eXDAGM
+#define Pot_sp PB4
 
 float resis = 1;
 int pinA = 3;
 volatile int contador = 0;
 unsigned long previousMillis = 0;
-long interval = 1000;
+long interval = 100;
 
 float cv;
 float cv1;
+float sp;
 float error;
 float error1;
 float error2;
+float pv;
 
 float Kp = 1;
 float Ki = 1;
@@ -34,7 +37,7 @@ unsigned long currentMilis = millis();
   }
 
 //----------SET POINT--------------
-  sp = analogRead(Pot_sp)     //Resistencia lineal
+  sp = analogRead(Pot_sp);     //Resistencia lineal
   error = sp - pv;
 
 //--------ECUACION DE DIFERENCIAS----------------
