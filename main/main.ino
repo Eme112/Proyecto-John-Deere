@@ -30,5 +30,5 @@ void setup() {
 
 void loop() {
   control.motorMovement(Serial.read());
-  control.moveToPosition(70); 
+  control.moveToPosition(70);
 }
