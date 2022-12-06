@@ -8,11 +8,12 @@
 
 Control control;
 
+// Manages interruptions caused by the encoder
 void interruptHandler() {
   control.pulse_counter++;
-  if(control.printing) {
+  /*if(control.printing) {
     Serial.printf("pulse_counter = %i\n", control.pulse_counter);
-  }
+  }*/
 }
 
 void setup() {
@@ -29,7 +30,8 @@ void setup() {
 }
 
 void loop() {
-  control.motorMovement(Serial.read());
-  control.moveToPosition(70); 
-  Serial.println(5.15);
+  //control.motorMovement(Serial.read());
+  control.PIDControl(55);
+  //control.updateVelocity();
+  //control.moveToPosition(10); 
 }
