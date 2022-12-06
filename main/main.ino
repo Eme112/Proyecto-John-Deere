@@ -31,7 +31,7 @@ void setup() {
 
 void loop() {
   //control.motorMovement(Serial.read());
-  control.PIDControl(55);
+  control.PIDControl(25);
   //control.updateVelocity();
   //control.moveToPosition(10); 
 }

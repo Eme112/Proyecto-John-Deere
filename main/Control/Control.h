@@ -20,8 +20,8 @@ class Control {
         // Constants
         const float pulses_per_mm = 270;
         const int   Tm = 100;   // Interval in milliseconds to measure velocity
-        const float Kp = 0.5; // Proportional constant for the PID controller
-        const float Ki = 2.0; // Integral constant for the PID controller
+        const float Kp = 0.4; // Proportional constant for the PID controller
+        const float Ki = 0.1; // Integral constant for the PID controller
         const float Kd = 0.001; // Derivative constant for the PID controller
 
         // Control variables
@@ -128,7 +128,7 @@ void Control::PIDControl(float setpoint) {
     }
 
     // If the error is small, stop the motor
-    if(abs(error0) < 0.4) {
+    if(abs(error0) < 0.3) {
       digitalWrite(IN1, LOW);
       digitalWrite(IN2, LOW);
       cv = 0;
@@ -137,16 +137,21 @@ void Control::PIDControl(float setpoint) {
     abs_cv = abs(cv);
 
     // Limiting the velocity
-    if(abs_cv > 255) abs_cv = 255;
-    else if(abs_cv < 174) abs_cv = 174;
+    if(abs_cv > 100) {
+      abs_cv = 255;
+    } else if(abs_cv < 0) {
+      abs_cv = 174;
+    } else {
+      abs_cv = map(abs_cv, 0, 100, 174, 255);
+    }
 
     // Print values
     if(printing) {
       Serial.println("Position = " + String(getPosition()) + " mm");
       Serial.println("Setpoint = " + String(setpoint) + " mm");
       Serial.println("Error = " + String(error0) + " mm");
-      Serial.println("Control variable = " + String(cv) + " mm");
       Serial.println("Direction = " + String(direction));
+      Serial.println("Control variable = " + String(cv));
       Serial.println("PWM = " + String(abs_cv));
       Serial.println();
     }
@@ -165,7 +170,7 @@ bool Control::validateMovement(char dir) {
       return false;
     }
   } else if(dir == 'B') {
-    if(valueRead() > 25) {
+    if(valueRead() > 22) {
       forward = false;
       backward = true;
       return true;
