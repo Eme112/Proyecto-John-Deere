@@ -30,6 +30,5 @@ void setup() {
 
 void loop() {
   control.motorMovement(Serial.read());
-  control.moveToPosition(70); 
-  Serial.println(5.15);
+  control.moveToPosition(70);
 }
