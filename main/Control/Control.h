@@ -20,8 +20,8 @@ class Control {
         // Constants
         const float pulses_per_mm = 270;
         const int   Tm = 100;   // Interval in milliseconds to measure velocity
-        const float Kp = 0.4; // Proportional constant for the PID controller
-        const float Ki = 0.1; // Integral constant for the PID controller
+        const float Kp = 0.5; // Proportional constant for the PID controller
+        const float Ki = 0.3; // Integral constant for the PID controller
         const float Kd = 0.001; // Derivative constant for the PID controller
 
         // Control variables
