@@ -66,7 +66,6 @@ class Control {
 };
 
 Control::Control() {
-
 }
 
 int Control::valueRead() {
