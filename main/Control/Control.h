@@ -17,21 +17,44 @@
 
 class Control {
     private:
+        // Constants
         const float pulses_per_mm = 270;
-        uint8_t velocity = 0;
-        bool forward;
-        bool backward;
+        const int   Tm = 100;   // Interval in milliseconds to measure velocity
+        const float Kp = 0.5; // Proportional constant for the PID controller
+        const float Ki = 0.3; // Integral constant for the PID controller
+        const float Kd = 0.001; // Derivative constant for the PID controller
+
+        // Control variables
+        float cv;
+        float cv1;
+        float error0 = 0;
+        float error1 = 0;
+        float error2 = 0;
+
+        // Other variables
+        float  velocity = 0;  // Velocity measured in pulses per second
+        float  position = 0;  // Position measured in millimeters
+        unsigned int  vel_pwm = 0;        // Velocity PWM value
+        unsigned long last_time = 0;
+        bool forward = false;
+        bool backward = false;
+        
     public:
-        float pulse_counter = 0;
-        bool printing = false;
+        int pulse_counter = 0;
+        bool printing = true;
+
         // Constructor
         Control();
         // Read the value of the linear resistor
         int valueRead();
         // Returns the position of the actuator based on a given value
-        float getPosition(float y);
-        // Manages interruptions caused by the encoder
-        void interruptHandler();
+        float getPosition();
+        // Updates control variables
+        void updateVariables();
+        // PID controller
+        void PIDControl(float setpoint);
+        // Validate if movement is possible
+        bool validateMovement(char input);
         // Moves the actuator based on a given input
         void moveMillis(char input, int millis);
         // Prints the lecture of the linear resistor on each millimeter
@@ -39,15 +62,10 @@ class Control {
         // Manages the movement of the actuator given a character
         void motorMovement(char input);
         // Moves the actuator to a given position
-        void moveToPosition(int pos);
+        void moveToPosition(float pos);
 };
 
 Control::Control() {
-  velocity = 0;
-  pulse_counter = 0;
-  printing = false;
-  forward = false;
-  backward = false;
 }
 
 int Control::valueRead() {
@@ -59,7 +77,8 @@ int Control::valueRead() {
   return mean_value / 10;
 }
 
-float Control::getPosition(float y) {
+float Control::getPosition() {
+  int y = valueRead();
   if(y < 1000) {
     return (y+41.754)/17.525;
   } else {
@@ -67,17 +86,105 @@ float Control::getPosition(float y) {
   }
 }
 
-void Control::interruptHandler() {
-  pulse_counter++;
-  if(printing) {
-    Serial.printf("pulse_counter = %i\n", pulse_counter);
+void Control::updateVariables() {
+  unsigned long current_time = millis();
+  position = getPosition();
+
+  if(current_time - last_time >= Tm) {
+    velocity = pulse_counter * 1000 / (current_time - last_time);
+    last_time = current_time;
+    pulse_counter = 0;
+    if(printing) {
+      Serial.println("velocity = " + String(velocity) + " pulses/s");
+      Serial.println("position = " + String(position) + " mm");
+    }
+  }
+}
+
+void Control::PIDControl(float setpoint) {
+  char direction;
+  float abs_cv;
+  unsigned long current_time = millis();
+  
+  if(current_time - last_time >= Tm) {
+    last_time = current_time;
+    error0 = setpoint - getPosition();
+    // Differential equation of the PID controller
+    cv = (Kp + Kd/Tm)*error0 + (-Kp + Ki*Tm - 2*Kd/Tm)*error1 + (Kd/Tm)*error2;
+    cv1 = cv;
+    error2 = error1;
+    error1 = error0;
+
+    // Set the direction of the motor
+    if(cv < 0) {
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, LOW);
+      direction = 'B';
+    } else {
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, HIGH);
+      direction = 'F';
+    }
+
+    // If the error is small, stop the motor
+    if(abs(error0) < 0.3) {
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      cv = 0;
+    }
+
+    abs_cv = abs(cv);
+
+    // Limiting the velocity
+    if(abs_cv > 100) {
+      abs_cv = 255;
+    } else if(abs_cv < 0) {
+      abs_cv = 174;
+    } else {
+      abs_cv = map(abs_cv, 0, 100, 174, 255);
+    }
+
+    // Print values
+    if(printing) {
+      Serial.println("Position = " + String(getPosition()) + " mm");
+      Serial.println("Setpoint = " + String(setpoint) + " mm");
+      Serial.println("Error = " + String(error0) + " mm");
+      Serial.println("Direction = " + String(direction));
+      Serial.println("Control variable = " + String(cv));
+      Serial.println("PWM = " + String(abs_cv));
+      Serial.println();
+    }
+
+    analogWrite(ENA, abs_cv);
+  }
+}
+
+bool Control::validateMovement(char dir) {
+  if(dir == 'F') {
+    if(valueRead() < 4060) {
+      forward = true;
+      backward = false;
+      return true;
+    } else {
+      return false;
+    }
+  } else if(dir == 'B') {
+    if(valueRead() > 22) {
+      forward = false;
+      backward = true;
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    return true;
   }
 }
 
 void Control::moveMillis(char dir, int mm) {
   pulse_counter = 0;
   if(dir == 'F') {
-    if(valueRead() < 4060) {
+    if(validateMovement('F')) {
       digitalWrite(IN1, LOW);
       digitalWrite(IN2, HIGH);
       while(pulse_counter < pulses_per_mm*mm) {
@@ -85,7 +192,7 @@ void Control::moveMillis(char dir, int mm) {
       }
     }
   } else if(dir == 'B') {
-    if(valueRead() > 25) {
+    if(validateMovement('B')) {
       digitalWrite(IN1, HIGH);
       digitalWrite(IN2, LOW);
       while(pulse_counter < pulses_per_mm*mm) {
@@ -114,25 +221,21 @@ void Control::printResistorValues() {
 }
 
 void Control::motorMovement(char input) {
-  if((forward && valueRead() > 4060)
-     || (backward && valueRead() < 26)) {
+  if(validateMovement(input)) {
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, LOW);  
   }
+  
   switch(input) {
     case 'F':                   // Moving Forward
-      if(valueRead() < 4060) {
-        forward = true;
-        backward = false;
+      if(validateMovement('F')) {
         digitalWrite(IN1, LOW);
         digitalWrite(IN2, HIGH);
         Serial.println("Moving Forward");
       }
       break;
     case 'B':                   // Moving Backward
-      if(valueRead() > 25) {
-        forward = false;
-        backward = true;
+      if(validateMovement('B')) {
         digitalWrite(IN1, HIGH);
         digitalWrite(IN2, LOW);
         Serial.println("Moving Backward");
@@ -143,18 +246,18 @@ void Control::motorMovement(char input) {
       digitalWrite(IN2, LOW);
       Serial.println("STOP");
       break;
-    case '0'...'9':             // Change velocity
-      velocity = (input-'0')*255/9;
-      analogWrite(ENA, velocity);
-      Serial.printf("Vel = %i\n", velocity);
+    case '0'...'9':             // Change vel_pwm
+      vel_pwm = (input-'0')*255/9;
+      analogWrite(ENA, vel_pwm);
+      Serial.printf("Vel = %i\n", vel_pwm);
       break;
     case '?':                   // Read resistance
       Serial.printf("LINEAR_RES = %i\n", valueRead());
       break;
     case 'X':                   // Estimate position
-      int pos;
-      pos = getPosition(float(valueRead()));
-      Serial.printf("Pos = %i mm\n", pos);
+      float pos;
+      pos = getPosition();
+      Serial.println("Pos = " + String(pos) + " mm");
       break;
     case 'P':                  // Print or not print
       printing = !printing;
@@ -171,9 +274,9 @@ void Control::motorMovement(char input) {
   }
 }
 
-void Control::moveToPosition(int pos) {
-  int current_pos = getPosition(valueRead());
-  Serial.printf("current_pos = %i\ttargeted_pos = %i\n", current_pos, pos);
+void Control::moveToPosition(float pos) {
+  float current_pos = getPosition();
+  Serial.println("current_pos = " + String(current_pos) + "\ttargeted_pos = " + String(pos));
   if(current_pos < pos) {
     moveMillis('F', pos-current_pos);
   } else if(current_pos > pos) {
