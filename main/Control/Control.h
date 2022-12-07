@@ -49,6 +49,10 @@ class Control {
         int valueRead();
         // Returns the position of the actuator based on a given value
         float getPosition();
+        // Returns the velocity of the actuator
+        float getVelocity();
+        // Returns de error of the PID controller
+        float getError();
         // Updates control variables
         void updateVariables();
         // PID controller
@@ -84,6 +88,14 @@ float Control::getPosition() {
   } else {
     return (y+4324)/91.392;
   }
+}
+
+float Control::getVelocity() {
+  return vel_pwm*100/255;
+}
+
+float Control::getError() {
+  return error0;
 }
 
 void Control::updateVariables() {
