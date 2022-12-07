@@ -1,10 +1,14 @@
 #include "Control/Control.h"
+<<<<<<< HEAD
 
 #define ENA PB10
 #define IN1 PB9
 #define IN2 PB8
 #define LINEAR_RES PA1
 #define INTERRUPT_PIN PA0
+=======
+#include "CAN/CAN.h"
+>>>>>>> 690e033a9988886894e172973f67f532045f881b
 
 // Definitions for conversions
 #define BIT7 PA2
@@ -40,6 +44,7 @@ void interruptHandler() {
   }*/
 }
 
+<<<<<<< HEAD
 void parallelRead() {
   uint8_t num = 0;
   
@@ -135,6 +140,10 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);
   Serial.println("Void setup achieved");
+=======
+void setup() {
+  Serial.begin(115200);
+>>>>>>> 690e033a9988886894e172973f67f532045f881b
   
   pinMode(ENA, OUTPUT);
   pinMode(IN1, OUTPUT);

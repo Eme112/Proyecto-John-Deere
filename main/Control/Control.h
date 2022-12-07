@@ -1,7 +1,7 @@
 // Code made by Emérico Pedraza and Renato Arcos in 2022 for the Linear Actuator Project.
 //
-// This class is intended to manually control the actuator's movement.
-// It also has some functions to return position and lecture of signals.
+// This class is intended to control the actuator's movement.
+// It also has some functions to controll manually and return position and lecture of signals.
 
 #ifndef Control_h
 #define Control_h
