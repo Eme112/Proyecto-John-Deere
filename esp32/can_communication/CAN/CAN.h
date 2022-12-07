@@ -29,7 +29,7 @@ class CAN {
 };
 
 CAN::CAN(MCP2515 &mcp2515) {
-    Serial.println("CAN initialized");
+    mcp2515 = mcp2515;
     mcp2515.reset();
     mcp2515.setBitrate(CAN_250KBPS, MCP_8MHZ);
     mcp2515.setNormalMode();
@@ -45,14 +45,12 @@ void CAN::sendSetpoint(MCP2515 &mcp2515, uint8_t setpoint) {
 
 void CAN::receiveSetpoint(MCP2515 &mcp2515, uint8_t &setpoint) {
     if (mcp2515.readMessage(&can_msg_setpoint) == MCP2515::ERROR_OK) {
-        Serial.println("OKAY");
         // id 0x01 is for receiving setpoint
         if (can_msg_setpoint.can_id == 0x01) {
             // Receive setpoint
             setpoint = can_msg_setpoint.data[0];
         }
     }
-    Serial.println("NOT OKAY");
 }
 
 void CAN::sendVariables(MCP2515 &mcp2515, uint8_t position, uint8_t setpoint, uint8_t error, uint8_t velocity) {
